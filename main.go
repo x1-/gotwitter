@@ -43,7 +43,7 @@ func getUserTimeline(api *anaconda.TwitterApi, scname string, count int) []anaco
 	end := time.Now()
 
 	d := end.Sub(start).Nanoseconds()
-	wait := 1*1000*1000*1000 - d
+	wait := 1*1000*1000*1000 - d + (10 * 1000 * 1000)
 
 	// fmt.Println("getUserTimeline")
 	// fmt.Printf("%v ns\n", wait)
@@ -86,9 +86,6 @@ func writeFriends(api *anaconda.TwitterApi, scname string, path string) error {
 		ncur = cursor.Next_cursor_str
 		fmt.Printf("next: %s\n", ncur)
 		if cursor.Next_cursor == 0 {
-			break
-		}
-		if cursor.Next_cursor > 0 {
 			break
 		}
 	}
