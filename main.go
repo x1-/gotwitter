@@ -45,8 +45,8 @@ func getUserTimeline(api *anaconda.TwitterApi, scname string, count int) []anaco
 	d := end.Sub(start).Nanoseconds()
 	wait := 1*1000*1000*1000 - d
 
-	fmt.Println("getUserTimeline")
-	fmt.Printf("%v ns\n", wait)
+	// fmt.Println("getUserTimeline")
+	// fmt.Printf("%v ns\n", wait)
 
 	time.Sleep(time.Duration(wait))
 
@@ -73,16 +73,22 @@ func writeFriends(api *anaconda.TwitterApi, scname string, path string) error {
 
 		cursor, _ := api.GetFriendsList(v)
 		for _, user := range cursor.Users {
-			ts := getUserTimeline(api, scname, 1)
+			ts := getUserTimeline(api, user.ScreenName, 20)
 			lt6m := isLessThan6Mionth(ts, start)
 			isPR := (strings.Index(user.Name, "公式") > -1) || (strings.Index(user.ScreenName, "official") > -1)
 			url := fmt.Sprintf("https://twitter.com/%s", user.ScreenName)
 			fmt.Printf("user=%s, protected=%v, last6mon=%v, isPR=%v \n", user.ScreenName, user.Protected, lt6m, isPR)
-			file.Write(([]byte)(fmt.Sprintf("%s,\"%s\",%s\n", user.ScreenName, user.Name, url)))
+
+			if lt6m && !isPR {
+				file.Write(([]byte)(fmt.Sprintf("%s,\"%s\",%s\n", user.ScreenName, user.Name, url)))
+			}
 		}
 		ncur = cursor.Next_cursor_str
 		fmt.Printf("next: %s\n", ncur)
 		if cursor.Next_cursor == 0 {
+			break
+		}
+		if cursor.Next_cursor > 0 {
 			break
 		}
 	}
@@ -111,6 +117,11 @@ func main() {
 	flag.Parse()
 
 	api := getTwitterAPI()
+
+	// twt := getUserTimeline(api, *user, 20)
+	// for _, t := range twt {
+	// 	fmt.Printf("%v\n", t.Text)
+	// }
 
 	if err := writeFriends(api, *user, *filePath); err != nil {
 		fmt.Errorf("error occured: %v", err)
