@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"strconv"
@@ -17,8 +19,10 @@ var (
 	consumerSecret    = flag.String("consumer_secret", "", "Issued from Twitter. ")
 	accessToken       = flag.String("access_token", "", "Issued from Twitter. ")
 	accessTokenSecret = flag.String("access_token_secret", "", "Issued from Twitter. ")
-	user              = flag.String("user", "", "The account of user. ")
-	filePath          = flag.String("file_path", "", "The path of the lists of user's friends. ")
+	user              = flag.String("user", "none", "The account of user. ")
+	friendsPath       = flag.String("friends_path", "/tmp", "The path of the lists of user's friends. ")
+	accountsPath      = flag.String("accounts_path", "/tmp", "The path of the lists of accounts. ")
+	tweetsPath        = flag.String("tweets_path", "/tmp", "The path of the lists of tweets. ")
 	// hashTag           = flag.String("hash_tag", "", "The name of hash tag.")
 )
 
@@ -43,7 +47,7 @@ func getUserTimeline(api *anaconda.TwitterApi, scname string, count int) []anaco
 	end := time.Now()
 
 	d := end.Sub(start).Nanoseconds()
-	wait := 1*1000*1000*1000 - d + (10 * 1000 * 1000)
+	wait := 1*1000*1000*1000 - d + (1 * 1000 * 1000)
 
 	// fmt.Println("getUserTimeline")
 	// fmt.Printf("%v ns\n", wait)
@@ -110,17 +114,74 @@ func isLessThan6Mionth(tweets []anaconda.Tweet, now time.Time) bool {
 	return lt6m
 }
 
+const (
+	ScreenName = 0
+	Name       = 1
+	URL        = 2
+	Sex        = 3
+	IsEngineer = 4
+)
+
+func writeTweetsByAccountList(api *anaconda.TwitterApi, inPath string, outPath string) error {
+	out, err := os.Create(outPath)
+	if err != nil {
+		return nil
+	}
+	defer out.Close()
+
+	header := []string{"tweet", "screen_name", "sex", "is_engineer"}
+
+	in, err := os.Open(inPath)
+	if err != nil {
+		return nil
+	}
+	defer in.Close()
+
+	reader := csv.NewReader(in)
+	reader.LazyQuotes = true
+
+	writer := csv.NewWriter(out)
+	writer.Write(header)
+
+	line := -1
+	for {
+		cols, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		line++
+		if line == 0 { // ヘッダー行
+			continue
+		}
+
+		twts := getUserTimeline(api, cols[ScreenName], 200)
+		for _, t := range twts {
+			writer.Write([]string{convNewline(t.Text, " "), cols[ScreenName], cols[Sex], cols[IsEngineer]})
+		}
+	}
+	return nil
+}
+func convNewline(str, nlcode string) string {
+	return strings.NewReplacer(
+		"\r\n", nlcode,
+		"\r", nlcode,
+		"\n", nlcode,
+	).Replace(str)
+}
+
 func main() {
 	flag.Parse()
 
 	api := getTwitterAPI()
 
-	// twt := getUserTimeline(api, *user, 20)
-	// for _, t := range twt {
-	// 	fmt.Printf("%v\n", t.Text)
+	// if err := writeFriends(api, *user, *friendsPath); err != nil {
+	// 	fmt.Errorf("[writeFriends] error occured: %v", err)
 	// }
 
-	if err := writeFriends(api, *user, *filePath); err != nil {
-		fmt.Errorf("error occured: %v", err)
+	if err := writeTweetsByAccountList(api, *accountsPath, *tweetsPath); err != nil {
+		fmt.Errorf("[writeTweetsByAccountList] error occured: %v", err)
 	}
 }
