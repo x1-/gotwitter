@@ -159,7 +159,7 @@ func writeTweetsByAccountList(api *anaconda.TwitterApi, inPath string, outPath s
 
 		twts := getUserTimeline(api, cols[ScreenName], 200)
 		for _, t := range twts {
-			writer.Write([]string{convNewline(t.Text, " "), cols[ScreenName], cols[Sex], cols[IsEngineer]})
+			writer.Write([]string{convNewline(t.FullText, " "), cols[ScreenName], cols[Sex], cols[IsEngineer]})
 		}
 	}
 	return nil
