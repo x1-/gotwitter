@@ -139,7 +139,7 @@ func writeTweetsByAccountList(api *anaconda.TwitterApi, inPath string, outPath s
 	}
 	defer out.Close()
 
-	header := []string{"tweet", "screen_name", "sex", "is_engineer"}
+	header := []string{"tweet", "screen_name", "sex", "is_engineer", "url_type"}
 
 	in, err := os.Open(inPath)
 	if err != nil {
@@ -167,13 +167,31 @@ func writeTweetsByAccountList(api *anaconda.TwitterApi, inPath string, outPath s
 			continue
 		}
 
-		twts := getUserTimeline(api, cols[ScreenName], 400)
+		fmt.Printf("%s \n", cols[ScreenName])
+
+		twts := getUserTimeline(api, cols[ScreenName], 500)
 		for _, t := range twts {
-			writer.Write([]string{convNewline(t.FullText, ","), cols[ScreenName], cols[Sex], cols[IsEngineer]})
+			urlType := getUrlType(t)
+			if urlType != "external" {
+				writer.Write([]string{convNewline(t.FullText, ","), cols[ScreenName], cols[Sex], cols[IsEngineer], urlType})
+			}
 		}
 	}
 	return nil
 }
+func getUrlType(t anaconda.Tweet) string {
+	for _, u := range t.Entities.Urls {
+		if (u.Expanded_url != "") && (strings.Index(u.Expanded_url, "https://twitter.com") < 0) {
+			return "external"
+		}
+	}
+	urlType := ""
+	for _, m := range t.Entities.Media {
+		urlType = m.Type
+	}
+	return urlType
+}
+
 func convNewline(str, nlcode string) string {
 	return strings.NewReplacer(
 		"\r\n", nlcode,
