@@ -36,12 +36,13 @@ func getUserTimeline(api *anaconda.TwitterApi, scname string, count int) []anaco
 
 	var tweets = make([]anaconda.Tweet, 0, 10)
 
-	start := time.Now()
 	curID := "-1"
 	perCount := 200
 	sCount := strconv.Itoa(perCount)
 
 	for {
+		start := time.Now()
+
 		v := url.Values{}
 		v.Set("screen_name", scname)
 		v.Set("count", sCount)
@@ -169,7 +170,7 @@ func writeTweetsByAccountList(api *anaconda.TwitterApi, inPath string, outPath s
 
 		fmt.Printf("%s \n", cols[ScreenName])
 
-		twts := getUserTimeline(api, cols[ScreenName], 500)
+		twts := getUserTimeline(api, cols[ScreenName], 400)
 		for _, t := range twts {
 			urlType := getUrlType(t)
 			if urlType != "external" {
