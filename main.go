@@ -34,25 +34,35 @@ func getTwitterAPI() *anaconda.TwitterApi {
 
 func getUserTimeline(api *anaconda.TwitterApi, scname string, count int) []anaconda.Tweet {
 
+	var tweets = make([]anaconda.Tweet, 0, 10)
+
 	start := time.Now()
+	curID := "-1"
+	perCount := 200
+	sCount := strconv.Itoa(perCount)
 
-	v := url.Values{}
-	v.Set("screen_name", scname)
-	v.Set("count", strconv.Itoa(count))
-	v.Set("exclude_replies", "true")
-	v.Set("include_rts", "false")
+	for {
+		v := url.Values{}
+		v.Set("screen_name", scname)
+		v.Set("count", sCount)
+		v.Set("exclude_replies", "true")
+		v.Set("include_rts", "false")
+		if curID != "-1" {
+			v.Set("max_id", curID)
+		}
 
-	tweets, _ := api.GetUserTimeline(v)
+		tws, _ := api.GetUserTimeline(v)
+		tweets = append(tweets, tws...)
+		if (len(tws) == 0) || (len(tweets) >= count) {
+			break
+		}
+		curID = tws[len(tws)-1].IdStr
 
-	end := time.Now()
-
-	d := end.Sub(start).Nanoseconds()
-	wait := 1*1000*1000*1000 - d + (1 * 1000 * 1000)
-
-	// fmt.Println("getUserTimeline")
-	// fmt.Printf("%v ns\n", wait)
-
-	time.Sleep(time.Duration(wait))
+		end := time.Now()
+		d := end.Sub(start).Nanoseconds()
+		wait := 1*1000*1000*1000 - d + (1 * 1000 * 1000)
+		time.Sleep(time.Duration(wait))
+	}
 
 	return tweets
 }
@@ -157,9 +167,9 @@ func writeTweetsByAccountList(api *anaconda.TwitterApi, inPath string, outPath s
 			continue
 		}
 
-		twts := getUserTimeline(api, cols[ScreenName], 200)
+		twts := getUserTimeline(api, cols[ScreenName], 400)
 		for _, t := range twts {
-			writer.Write([]string{convNewline(t.FullText, " "), cols[ScreenName], cols[Sex], cols[IsEngineer]})
+			writer.Write([]string{convNewline(t.FullText, ","), cols[ScreenName], cols[Sex], cols[IsEngineer]})
 		}
 	}
 	return nil
